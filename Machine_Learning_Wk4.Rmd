@@ -1,0 +1,91 @@
+---
+title: "Pratical Machine Learning Project"
+author: "Lingna Chai"
+date: "May 27, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. This project is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: <http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har> 
+
+The goal of the project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. 
+
+## Data Import and Cleanup
+
+For the purpose of this project, import below R packages first.
+
+```{r library, echo=FALSE, message=FALSE, warning=FALSE}
+library("AppliedPredictiveModeling")
+library("ElemStatLearn")
+library("pgmm")
+library("rpart")
+library("gbm")
+library("lubridate")
+library("forecast")
+library("e1071")
+library("caret")
+```
+
+Data set can be found from below URL link. Download the Training and Testing Data set from the links and identify NULL values.
+
+```{r dataprep, echo=TRUE}
+#rm(list=ls())
+url1 <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+url2 <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+training = read.csv(url(url1),na.strings = c("NA","#DIV/0!",""))
+testing = read.csv(url(url2),na.strings = c("NA","#DIV/0!",""))
+
+```
+
+For modeling purpose, further split the Training data set into trainingset (70%) and testingset (30%) for validation.
+
+```{r trainingset, echo=TRUE}
+inTrain <- createDataPartition(training$classe,p=0.7,list=FALSE)
+trainingset <- training[inTrain,]
+testingset <- training[-inTrain,]
+
+dim(trainingset)
+```
+
+Total of 160 variables including target variable "classe" available in the Training set. This would be too many variables to use for modeling. Exclude variables that has null measures and only focus on variables that are fully populated. Further exclude identifier variables that is not required for modeling. Total variables decreased from 160 to 46 after cleanup.
+
+```{r datacleanup, echo=TRUE}
+NA_count <- sapply(1:dim(trainingset)[2],function(x)sum(is.na(trainingset[,x])))
+remove_list <-c(1:7,which(NA_count>0))
+
+trainingset <- trainingset[,-remove_list]
+testingset <-testingset[,-remove_list]
+dim(trainingset)
+#str(trainingset)
+```
+
+## Modeling and Validation
+
+Use random forest method and train the model using Traningset. The calculation took a rather long time. To avoid multiple calculation, calculated model data is saved under local file "all.RData" (calculated from the commented train command below). Apply the trained random forest model onto testing set. Below is the output result from validation.
+
+Accuracy on the testingset is 99%. 
+
+```{r randomforest, echo=TRUE,}
+load("all.RData")
+#mod1 <- train(classe~., data = trainingset, method = "rf", trControl= trainControl(method="cv"), number=4)
+pred1 <- predict(mod1,testingset)
+confusionMatrix(pred1,testingset$classe)
+
+```
+
+## Prediction
+
+Apply the same random forest model on Testing data set. And the result 100% matches with the actual result (from course quiz).
+
+```{r testing, echo=TRUE,}
+pred_test= predict(mod1,testing)
+pred_test
+```
+
+
+
